@@ -9,12 +9,15 @@ import (
 	"path"
 
 	"github.com/gorilla/mux"
+	"gopkg.in/unrolled/render.v1"
 )
 
 type Book struct {
 	Title  string `json:"title"`
 	Author string `json:"author"`
 }
+
+var Render *render.Render
 
 func main() {
 
@@ -24,12 +27,16 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+	Render = render.New(render.Options{})
 
 	// ROUTES
 	// --------------
 	router := mux.NewRouter().StrictSlash(false)
-	router.HandleFunc("/", ShowBooks)
-	router.HandleFunc("/api/books", ShowBooksAPI)
+	router.HandleFunc("/", ShowBooks)             // vanilla html route
+	router.HandleFunc("/api/books", ShowBooksAPI) // vanilla json route
+	router.HandleFunc("/render/data", DataRender) // render pkg routes
+	router.HandleFunc("/render/json", JsonRender) // render pkg routes
+	router.HandleFunc("/render/html", HtmlRender) // render pkg routes
 
 	// SERVER
 	// ---------------
@@ -41,8 +48,7 @@ func main() {
 // HANDLERS
 // ---------------
 func ShowBooks(w http.ResponseWriter, r *http.Request) {
-
-	book := Book{"Building Web Apps with Go", "Jeremy Saenz"}
+	book := Book{"Building Web Apps with Go", "Kyle Chadha"}
 
 	// First we parse the template.
 	fp := path.Join("templates", "index.html")
@@ -57,12 +63,10 @@ func ShowBooks(w http.ResponseWriter, r *http.Request) {
 	if err := tmpl.Execute(w, book); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
 }
 
 func ShowBooksAPI(w http.ResponseWriter, r *http.Request) {
-
-	book := Book{"Building Web Apps with Go", "Jeremy Saenz"}
+	book := Book{"Building Web Apps with Go", "Kyle Chadha"}
 
 	json, err := json.Marshal(book)
 	if err != nil {
@@ -72,5 +76,16 @@ func ShowBooksAPI(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(json)
+}
 
+func DataRender(w http.ResponseWriter, r *http.Request) {
+	Render.Data(w, http.StatusOK, []byte("Some binary data here."))
+}
+
+func JsonRender(w http.ResponseWriter, r *http.Request) {
+	Render.JSON(w, http.StatusOK, map[string]string{"hello": "json"})
+}
+
+func HtmlRender(w http.ResponseWriter, r *http.Request) {
+	Render.HTML(w, http.StatusOK, "example", string("this is a string"))
 }
